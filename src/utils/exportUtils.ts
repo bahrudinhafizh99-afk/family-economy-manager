@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
-import { Transaction } from '../types';
+import type { Transaction } from '../types';
 
 // Extend jsPDF type to include autoTable
 interface ExtendedjsPDF extends jsPDF {

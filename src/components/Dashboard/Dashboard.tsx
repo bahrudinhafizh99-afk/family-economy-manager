@@ -1,9 +1,10 @@
 import React from 'react';
 import { useAppStore } from '../../store/useAppStore';
-import { Card, Button } from '../ui/Base';
-import { ArrowUpRight, ArrowDownLeft, Wallet, Download, PieChart as PieIcon } from 'lucide-react';
+import { Card } from '../ui/Base';
+import { ArrowUpRight, ArrowDownLeft, Wallet, Download } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { exportToPDF } from '../../utils/exportUtils';
+import type { ValueType } from 'recharts/types/component/DefaultTooltipContent';
 
 export const Dashboard: React.FC = () => {
   const { transactions, budgets, goals } = useAppStore();
@@ -109,12 +110,12 @@ export const Dashboard: React.FC = () => {
                   paddingAngle={5}
                   dataKey="value"
                 >
-                  {chartData.map((entry, index) => (
+                  {chartData.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
                 <Tooltip 
-                  formatter={(value: number) => formatCurrency(value)}
+                  formatter={(value: ValueType | undefined) => value ? formatCurrency(Number(value)) : ''}
                   contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                 />
                 <Legend verticalAlign="bottom" height={36}/>
