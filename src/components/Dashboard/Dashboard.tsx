@@ -1,7 +1,9 @@
 import React from 'react';
 import { useAppStore } from '../../store/useAppStore';
-import { Card } from '../ui/Base';
-import { ArrowUpRight, ArrowDownLeft, Wallet } from 'lucide-react';
+import { Card, Button } from '../ui/Base';
+import { ArrowUpRight, ArrowDownLeft, Wallet, Download, PieChart as PieIcon } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { exportToPDF } from '../../utils/exportUtils';
 
 export const Dashboard: React.FC = () => {
   const { transactions, budgets, goals } = useAppStore();
@@ -16,6 +18,21 @@ export const Dashboard: React.FC = () => {
 
   const balance = totalIncome - totalExpense;
 
+  // Data for Pie Chart
+  const expenseByCategory = transactions
+    .filter(t => t.type === 'expense')
+    .reduce((acc: any, curr) => {
+      acc[curr.category] = (acc[curr.category] || 0) + curr.amount;
+      return acc;
+    }, {});
+
+  const chartData = Object.keys(expenseByCategory).map(name => ({
+    name,
+    value: expenseByCategory[name]
+  }));
+
+  const COLORS = ['#FFB499', '#B5EAD7', '#C7CEEA', '#FFDAC1', '#E2F0CB', '#FF9AA2'];
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -29,13 +46,35 @@ export const Dashboard: React.FC = () => {
       <Card className="balance-card" style={{ 
         background: 'linear-gradient(135deg, var(--primary-color), #FFD1C1)',
         color: 'var(--text-primary)',
-        padding: '30px 24px'
+        padding: '30px 24px',
+        position: 'relative'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
           <Wallet size={20} />
           <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>Total Saldo Keluarga</span>
         </div>
         <h2 style={{ margin: 0, fontSize: '2rem', fontWeight: 800 }}>{formatCurrency(balance)}</h2>
+        
+        <button 
+          onClick={() => exportToPDF(transactions, balance)}
+          style={{ 
+            position: 'absolute', 
+            top: '20px', 
+            right: '20px', 
+            background: 'rgba(255,255,255,0.3)', 
+            border: 'none', 
+            borderRadius: '50%', 
+            width: '40px', 
+            height: '40px', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            cursor: 'pointer'
+          }}
+          title="Unduh PDF"
+        >
+          <Download size={20} />
+        </button>
       </Card>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
@@ -55,6 +94,35 @@ export const Dashboard: React.FC = () => {
           <span style={{ fontSize: '1.1rem', fontWeight: 700 }}>{formatCurrency(totalExpense)}</span>
         </Card>
       </div>
+
+      {chartData.length > 0 && (
+        <Card title="Analisis Pengeluaran">
+          <div style={{ height: '250px', width: '100%' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={chartData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {chartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  formatter={(value: number) => formatCurrency(value)}
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                />
+                <Legend verticalAlign="bottom" height={36}/>
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      )}
 
       <Card title="Anggaran Bulan Ini">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
