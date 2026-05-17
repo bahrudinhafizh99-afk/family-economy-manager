@@ -1,0 +1,65 @@
+:root {
+  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light;
+  color: #4A4A4A;
+  background-color: #FDFBF7;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* Theme Colors */
+  --bg-color: #FDFBF7;
+  --card-bg: #FFFFFF;
+  --primary-color: #FFB499; /* Soft Peach */
+  --secondary-color: #B5EAD7; /* Soft Mint */
+  --accent-color: #C7CEEA; /* Soft Blue */
+  --warning-color: #FFDAC1; /* Soft Orange */
+  --text-primary: #4A4A4A;
+  --text-secondary: #7A7A7A;
+  
+  --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.05);
+  --border-radius-lg: 24px;
+  --border-radius-md: 16px;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+h1, h2, h3 {
+  color: var(--text-primary);
+  font-weight: 700;
+  border-radius: var(--border-radius-md);
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  border-radius: var(--border-radius-md);
+  padding: 12px 24px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+.card {
+  background: var(--card-bg);
+  border-radius: var(--border-radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-soft);
+}
