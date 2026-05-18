@@ -9,7 +9,7 @@ export interface Transaction {
   type: TransactionType;
 }
 
-export interface Budget {
+export interface BudgetCategory {
   category: string;
   limit: number;
   spent: number;
@@ -20,11 +20,29 @@ export interface SavingGoal {
   title: string;
   targetAmount: number;
   currentAmount: number;
-  deadline?: string;
+}
+
+export type DebtType = 'to_pay' | 'to_receive';
+
+export interface Debt {
+  id: string;
+  title: string;
+  amount: number;
+  dueDate: string;
+  type: DebtType;
+  status: 'active' | 'paid';
+}
+
+export interface AppSettings {
+  language: 'id' | 'en';
+  currency: 'IDR' | 'USD';
+  theme: 'soft' | 'dark' | 'nature';
 }
 
 export interface AppState {
   transactions: Transaction[];
-  budgets: Budget[];
+  budgets: BudgetCategory[];
   goals: SavingGoal[];
+  debts: Debt[];
+  settings: AppSettings;
 }

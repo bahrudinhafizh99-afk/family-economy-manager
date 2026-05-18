@@ -12,7 +12,7 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  /* Theme Colors */
+  /* Theme Colors - Default Soft */
   --bg-color: #FDFBF7;
   --card-bg: #FFFFFF;
   --primary-color: #FFB499; /* Soft Peach */
@@ -25,6 +25,28 @@
   --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.05);
   --border-radius-lg: 24px;
   --border-radius-md: 16px;
+}
+
+[data-theme='dark'] {
+  --bg-color: #1a1a1a;
+  --card-bg: #2d2d2d;
+  --primary-color: #ff9f7d;
+  --secondary-color: #74b9ff;
+  --accent-color: #a29bfe;
+  --warning-color: #fab1a0;
+  --text-primary: #f0f0f0;
+  --text-secondary: #a0a0a0;
+}
+
+[data-theme='nature'] {
+  --bg-color: #f0f7f4;
+  --card-bg: #ffffff;
+  --primary-color: #7bed9f;
+  --secondary-color: #70a1ff;
+  --accent-color: #eccc68;
+  --warning-color: #ffa502;
+  --text-primary: #2f3542;
+  --text-secondary: #57606f;
 }
 
 body {
