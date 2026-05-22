@@ -1,18 +1,20 @@
 import React, { useMemo, useCallback } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Card } from '../ui/Base';
-import { ArrowUpRight, ArrowDownLeft, Wallet, FileText, Download, Sparkles, AlertTriangle, CheckCircle, Activity } from 'lucide-react';
+import { ArrowUpRight, ArrowDownLeft, Wallet, FileText, Download, Sparkles, AlertTriangle, CheckCircle, Activity, Bell } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { exportToPDF, exportToCSV } from '../../utils/exportUtils';
 import type { ValueType } from 'recharts/types/component/DefaultTooltipContent';
 import { motion } from 'framer-motion';
 import { calculateFinancialHealth } from '../../utils/healthEngine';
+import { getUpcomingBills } from '../../utils/reminderEngine';
 
 export const Dashboard: React.FC = () => {
   const store = useAppStore();
-  const { transactions, budgets, settings } = store;
+  const { transactions, budgets, settings, recurringTransactions } = store;
   
   const healthReport = useMemo(() => calculateFinancialHealth(store), [store]);
+  const upcomingBills = useMemo(() => getUpcomingBills(recurringTransactions), [recurringTransactions]);
 
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
@@ -168,6 +170,49 @@ export const Dashboard: React.FC = () => {
       animate="visible"
       style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
     >
+      {/* BILL REMINDERS */}
+      {upcomingBills.length > 0 && (
+        <motion.div variants={itemVariants}>
+          <Card style={{ 
+            padding: '16px 20px', 
+            background: 'rgba(255, 180, 153, 0.1)', 
+            border: '2.5px dashed var(--primary-color)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', fontWeight: 800, fontSize: '0.9rem' }}>
+              <Bell size={18} color="var(--primary-color)" />
+              {settings.language === 'id' ? 'PENGINGAT TAGIHAN' : 'BILL REMINDERS'}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {upcomingBills.map(bill => (
+                <div key={bill.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'white', padding: '10px 14px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>{bill.title}</div>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: bill.isOverdue ? '#D32F2F' : 'var(--text-secondary)' }}>
+                      {bill.isOverdue 
+                        ? (settings.language === 'id' ? 'Terlambat!' : 'Overdue!') 
+                        : (settings.language === 'id' ? `Jatuh tempo: ${bill.dueDate}` : `Due: ${bill.dueDate}`)}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontWeight: 800, color: 'var(--text-primary)' }}>{formatCurrency(bill.amount)}</div>
+                    <div style={{ fontSize: '0.65rem', fontWeight: 800, color: bill.isOverdue ? '#D32F2F' : 'var(--primary-color)', textTransform: 'uppercase' }}>
+                      {bill.daysRemaining === 0 
+                        ? (settings.language === 'id' ? 'Hari Ini' : 'Today')
+                        : bill.daysRemaining === 1 
+                          ? (settings.language === 'id' ? 'Besok' : 'Tomorrow')
+                          : (settings.language === 'id' ? `${bill.daysRemaining} hari lagi` : `${bill.daysRemaining} days left`)}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </motion.div>
+      )}
+
       {/* FINANCIAL HEALTH SCORE CARD */}
       <motion.div variants={itemVariants}>
         <Card style={{ 
