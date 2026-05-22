@@ -33,16 +33,37 @@ export interface Debt {
   status: 'active' | 'paid';
 }
 
+export type RecurrenceFrequency = 'monthly' | 'weekly' | 'yearly';
+
+export interface RecurringTransaction {
+  id: string;
+  title: string;
+  amount: number;
+  category: string;
+  type: TransactionType;
+  frequency: RecurrenceFrequency;
+  startDate: string;
+  lastprocessed?: string;
+  isActive: boolean;
+}
+
 export interface AppSettings {
   language: 'id' | 'en';
   currency: 'IDR' | 'USD';
   theme: 'soft' | 'dark' | 'nature';
 }
 
+export interface UserProfile {
+  id: string;
+  email: string;
+}
+
 export interface AppState {
+  user: UserProfile | null;
   transactions: Transaction[];
   budgets: BudgetCategory[];
   goals: SavingGoal[];
   debts: Debt[];
+  recurringTransactions: RecurringTransaction[];
   settings: AppSettings;
 }

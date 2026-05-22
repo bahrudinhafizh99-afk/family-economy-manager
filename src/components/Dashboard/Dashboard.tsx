@@ -1,57 +1,72 @@
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Card } from '../ui/Base';
-import { ArrowUpRight, ArrowDownLeft, Wallet, Download, FileText, Sparkles, AlertTriangle, CheckCircle } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { ArrowUpRight, ArrowDownLeft, Wallet, FileText, Download, Sparkles, AlertTriangle, CheckCircle, Activity } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { exportToPDF, exportToCSV } from '../../utils/exportUtils';
 import type { ValueType } from 'recharts/types/component/DefaultTooltipContent';
 import { motion } from 'framer-motion';
+import { calculateFinancialHealth } from '../../utils/healthEngine';
 
 export const Dashboard: React.FC = () => {
-  const { transactions, budgets, settings } = useAppStore();
+  const store = useAppStore();
+  const { transactions, budgets, settings } = store;
   
+  const healthReport = useMemo(() => calculateFinancialHealth(store), [store]);
+
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
 
-  const monthlyTransactions = transactions.filter(t => {
+  const monthlyTransactions = useMemo(() => transactions.filter(t => {
     const d = new Date(t.date);
     return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-  });
+  }), [transactions, currentMonth, currentYear]);
 
-  const totalIncome = monthlyTransactions
+  const totalIncome = useMemo(() => monthlyTransactions
     .filter(t => t.type === 'income')
-    .reduce((acc, curr) => acc + curr.amount, 0);
+    .reduce((acc, curr) => acc + curr.amount, 0), [monthlyTransactions]);
 
-  const totalExpense = monthlyTransactions
+  const totalExpense = useMemo(() => monthlyTransactions
     .filter(t => t.type === 'expense')
-    .reduce((acc, curr) => acc + curr.amount, 0);
+    .reduce((acc, curr) => acc + curr.amount, 0), [monthlyTransactions]);
 
-  const balance = totalIncome - totalExpense;
+  const balance = useMemo(() => totalIncome - totalExpense, [totalIncome, totalExpense]);
 
-  const expenseByCategory = monthlyTransactions
-    .filter(t => t.type === 'expense')
-    .reduce((acc: any, curr) => {
-      acc[curr.category] = (acc[curr.category] || 0) + curr.amount;
-      return acc;
-    }, {});
+  const chartData = useMemo(() => {
+    const expenseByCategory = monthlyTransactions
+      .filter(t => t.type === 'expense')
+      .reduce((acc: Record<string, number>, curr) => {
+        acc[curr.category] = (acc[curr.category] || 0) + curr.amount;
+        return acc;
+      }, {});
 
-  const chartData = Object.keys(expenseByCategory).map(name => ({
-    name,
-    value: expenseByCategory[name]
-  }));
+    return Object.keys(expenseByCategory).map(name => ({
+      name,
+      value: expenseByCategory[name]
+    }));
+  }, [monthlyTransactions]);
 
   const COLORS = ['#FFB499', '#B5EAD7', '#C7CEEA', '#FFDAC1', '#E2F0CB', '#FF9AA2'];
 
-  const formatCurrency = (amount: number) => {
+  const budgetsWithSpent = useMemo(() => {
+    return budgets.map(b => {
+      const spent = monthlyTransactions
+        .filter(t => t.category === b.category && t.type === 'expense')
+        .reduce((sum, t) => sum + t.amount, 0);
+      return { ...b, spent };
+    });
+  }, [budgets, monthlyTransactions]);
+
+  const formatCurrency = useCallback((amount: number) => {
     return new Intl.NumberFormat(settings.language === 'id' ? 'id-ID' : 'en-US', {
       style: 'currency',
       currency: settings.currency,
       minimumFractionDigits: 0
     }).format(amount);
-  };
+  }, [settings.language, settings.currency]);
 
   // --- SMART INSIGHTS ENGINE ---
-  const getSmartInsight = () => {
+  const insight = useMemo(() => {
     const isID = settings.language === 'id';
     
     // 1. Deficit Check
@@ -104,21 +119,43 @@ export const Dashboard: React.FC = () => {
         : 'Always record every single expense to make financial evaluation easier.',
       color: 'var(--primary-color)'
     };
-  };
+  }, [totalIncome, totalExpense, balance, budgets, monthlyTransactions.length, settings.language]);
 
-  const insight = getSmartInsight();
-
-  const labels = {
+  const labels = useMemo(() => ({
     balance: settings.language === 'id' ? 'Total Saldo Keluarga' : 'Total Family Balance',
     income: settings.language === 'id' ? 'Pemasukan' : 'Income',
     expense: settings.language === 'id' ? 'Pengeluaran' : 'Expense',
     analysis: settings.language === 'id' ? 'Analisis Pengeluaran' : 'Expense Analysis',
+    trend: settings.language === 'id' ? 'Tren 6 Bulan Terakhir' : 'Last 6 Months Trend',
     budget: settings.language === 'id' ? 'Status Anggaran' : 'Budget Status',
-    savings: settings.language === 'id' ? 'Target Tabungan' : 'Savings Goals',
-    achieved: settings.language === 'id' ? 'Tercapai' : 'Achieved',
-    from: settings.language === 'id' ? 'dari' : 'from',
     spent: settings.language === 'id' ? 'Terpakai' : 'Spent'
-  };
+  }), [settings.language]);
+
+  const trendData = useMemo(() => {
+    const months = [];
+    const now = new Date();
+    
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthLabel = d.toLocaleDateString(settings.language === 'id' ? 'id-ID' : 'en-US', { month: 'short' });
+      
+      const monthlySum = transactions.filter(t => {
+        const td = new Date(t.date);
+        return td.getMonth() === d.getMonth() && td.getFullYear() === d.getFullYear();
+      }).reduce((acc, curr) => {
+        if (curr.type === 'income') acc.income += curr.amount;
+        else acc.expense += curr.amount;
+        return acc;
+      }, { income: 0, expense: 0 });
+
+      months.push({
+        name: monthLabel,
+        income: monthlySum.income,
+        expense: monthlySum.expense
+      });
+    }
+    return months;
+  }, [transactions, settings.language]);
 
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
@@ -131,6 +168,63 @@ export const Dashboard: React.FC = () => {
       animate="visible"
       style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
     >
+      {/* FINANCIAL HEALTH SCORE CARD */}
+      <motion.div variants={itemVariants}>
+        <Card style={{ 
+          padding: '20px', 
+          border: 'none',
+          background: 'linear-gradient(135deg, #1e293b, #0f172a)',
+          color: 'white',
+          position: 'relative',
+          overflow: 'hidden'
+        }}>
+          <div style={{ position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: 0.8, fontSize: '0.85rem', fontWeight: 600 }}>
+                <Activity size={16} /> 
+                {settings.language === 'id' ? 'SKOR KESEHATAN KEUANGAN' : 'FINANCIAL HEALTH SCORE'}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                <span style={{ fontSize: '3rem', fontWeight: 900, color: healthReport.color }}>{healthReport.score}</span>
+                <span style={{ fontSize: '1rem', fontWeight: 700, color: healthReport.color, opacity: 0.9 }}>/ 100</span>
+              </div>
+              <div style={{ 
+                display: 'inline-block', 
+                padding: '4px 12px', 
+                borderRadius: '20px', 
+                backgroundColor: `${healthReport.color}22`, 
+                color: healthReport.color,
+                fontSize: '0.8rem',
+                fontWeight: 800,
+                width: 'fit-content'
+              }}>
+                {healthReport.status.toUpperCase()}
+              </div>
+            </div>
+
+            <div style={{ width: '130px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {healthReport.tips.map((tip, i) => (
+                <div key={i} style={{ fontSize: '0.7rem', opacity: 0.8, backgroundColor: 'rgba(255,255,255,0.05)', padding: '6px 10px', borderRadius: '8px', borderLeft: `3px solid ${healthReport.color}` }}>
+                  {tip}
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          {/* Subtle Background Circle */}
+          <div style={{ 
+            position: 'absolute', 
+            right: '-30px', 
+            top: '-30px', 
+            width: '150px', 
+            height: '150px', 
+            borderRadius: '50%', 
+            background: `${healthReport.color}11`,
+            zIndex: 0 
+          }} />
+        </Card>
+      </motion.div>
+
       {/* SMART INSIGHT CARD */}
       <motion.div variants={itemVariants}>
         <Card style={{ 
@@ -193,7 +287,7 @@ export const Dashboard: React.FC = () => {
               <motion.button 
                 whileHover={{ scale: 1.1, backgroundColor: 'rgba(255,255,255,0.4)' }}
                 whileTap={{ scale: 0.9 }}
-                onClick={() => exportToPDF(transactions, balance)}
+                onClick={() => exportToPDF(transactions, totalIncome, totalExpense, balance, settings.language)}
                 style={{ background: 'rgba(255,255,255,0.25)', border: 'none', borderRadius: '50%', width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', backdropFilter: 'blur(4px)' }}
                 title="PDF"
               >
@@ -204,7 +298,11 @@ export const Dashboard: React.FC = () => {
         </Card>
       </motion.div>
 
-      <motion.div variants={itemVariants} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+      <motion.div variants={itemVariants} style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', 
+        gap: '15px' 
+      }}>
         <Card style={{ padding: '20px', border: '1px solid rgba(var(--secondary-color), 0.1)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--secondary-color)', marginBottom: '8px' }}>
             <ArrowUpRight size={18} />
@@ -219,6 +317,54 @@ export const Dashboard: React.FC = () => {
             <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{labels.expense}</span>
           </div>
           <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#D32F2F' }}>{formatCurrency(totalExpense)}</span>
+        </Card>
+      </motion.div>
+
+      {/* MONTHLY TREND CHART */}
+      <motion.div variants={itemVariants}>
+        <Card title={labels.trend}>
+          <div style={{ height: '300px', width: '100%', marginTop: '10px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={trendData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
+                <XAxis 
+                  dataKey="name" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 12, fontWeight: 600, fill: 'var(--text-secondary)' }}
+                />
+                <YAxis 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 10, fontWeight: 600, fill: 'var(--text-secondary)' }}
+                  tickFormatter={(value) => `${value/1000}k`}
+                />
+                <Tooltip 
+                  formatter={(value: ValueType | undefined) => value ? formatCurrency(Number(value)) : ''}
+                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 8px 24px rgba(0,0,0,0.1)', padding: '12px' }}
+                />
+                <Legend verticalAlign="top" height={36} align="right" iconType="circle" />
+                <Line 
+                  type="monotone" 
+                  dataKey="income" 
+                  name={labels.income} 
+                  stroke="#2E7D32" 
+                  strokeWidth={4} 
+                  dot={{ r: 4, fill: '#2E7D32' }} 
+                  activeDot={{ r: 6 }} 
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="expense" 
+                  name={labels.expense} 
+                  stroke="#D32F2F" 
+                  strokeWidth={4} 
+                  dot={{ r: 4, fill: '#D32F2F' }} 
+                  activeDot={{ r: 6 }} 
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </Card>
       </motion.div>
 
@@ -243,7 +389,7 @@ export const Dashboard: React.FC = () => {
       <motion.div variants={itemVariants}>
         <Card title={labels.budget}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-            {budgets.slice(0, 4).map(budget => {
+            {budgetsWithSpent.slice(0, 4).map(budget => {
               const percent = budget.limit > 0 ? Math.min(100, (budget.spent / budget.limit) * 100) : (budget.spent > 0 ? 100 : 0);
               return (
                 <div key={budget.category}>

@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Card } from '../ui/Base';
 import type { TransactionType } from '../../types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trash2, Plus, Minus } from 'lucide-react';
+import { getCategoryIcon } from '../../utils/categoryIcons';
 
 export const TransactionForm: React.FC<{ onSave: () => void }> = ({ onSave }) => {
   const { addTransaction, budgets, settings } = useAppStore();
@@ -197,39 +198,41 @@ export const TransactionList: React.FC = () => {
   const [filterMonth, setFilterMonth] = useState(new Date().getMonth());
   const [filterYear, setFilterYear] = useState(new Date().getFullYear());
 
-  const monthsID = [
-    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-  ];
-  
-  const monthsEN = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ];
+  const months = useMemo(() => {
+    const monthsID = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ];
+    
+    const monthsEN = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
 
-  const months = settings.language === 'id' ? monthsID : monthsEN;
+    return settings.language === 'id' ? monthsID : monthsEN;
+  }, [settings.language]);
 
-  const filteredTransactions = transactions.filter(t => {
+  const filteredTransactions = useMemo(() => transactions.filter(t => {
     const d = new Date(t.date);
     return d.getMonth() === filterMonth && d.getFullYear() === filterYear;
-  });
+  }), [transactions, filterMonth, filterYear]);
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = useCallback((amount: number) => {
     return new Intl.NumberFormat(settings.language === 'id' ? 'id-ID' : 'en-US', {
       style: 'currency',
       currency: settings.currency,
       minimumFractionDigits: 0
     }).format(amount);
-  };
+  }, [settings.language, settings.currency]);
 
-  const formatDate = (dateStr: string) => {
+  const formatDate = useCallback((dateStr: string) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString(settings.language === 'id' ? 'id-ID' : 'en-US', {
       day: 'numeric',
       month: 'long',
       year: 'numeric'
     });
-  };
+  }, [settings.language]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -307,9 +310,9 @@ export const TransactionList: React.FC = () => {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: '1.4rem'
+                      color: t.type === 'income' ? '#2E7D32' : '#D32F2F'
                     }}>
-                      {t.type === 'income' ? '💰' : '💸'}
+                      {getCategoryIcon(t.category, 24)}
                     </div>
                     <div>
                       <div style={{ fontWeight: 800, fontSize: '1rem' }}>{t.category}</div>

@@ -4,16 +4,29 @@ import { Dashboard } from './components/Dashboard/Dashboard';
 import { TransactionForm, TransactionList } from './components/Transactions/Transactions';
 import { PlanningView } from './components/Planning/Planning';
 import { SettingsView } from './components/Settings/Settings';
+import { AuthView } from './components/Auth/Auth';
+import { AuthProvider } from './components/Auth/AuthProvider';
+import { useSync } from './hooks/useSync';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from './store/useAppStore';
 
-function App() {
+function AppContent() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const { settings } = useAppStore();
+  const { settings, processRecurringTransactions, user } = useAppStore();
+  
+  useSync(); // Background Sync
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', settings.theme);
   }, [settings.theme]);
+
+  useEffect(() => {
+    processRecurringTransactions();
+  }, []);
+
+  if (!user) {
+    return <AuthView />;
+  }
 
   const renderContent = () => {
     switch (activeTab) {
@@ -46,6 +59,14 @@ function App() {
         </motion.div>
       </AnimatePresence>
     </Layout>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 
