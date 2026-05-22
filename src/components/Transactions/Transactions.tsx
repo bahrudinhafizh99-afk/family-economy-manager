@@ -5,6 +5,7 @@ import type { TransactionType } from '../../types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trash2, Plus, Minus } from 'lucide-react';
 import { getCategoryIcon } from '../../utils/categoryIcons';
+import { suggestCategory } from '../../utils/aiUtils';
 
 export const TransactionForm: React.FC<{ onSave: () => void }> = ({ onSave }) => {
   const { addTransaction, budgets, settings } = useAppStore();
@@ -12,6 +13,27 @@ export const TransactionForm: React.FC<{ onSave: () => void }> = ({ onSave }) =>
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('Makan');
   const [description, setDescription] = useState('');
+
+  const allCategories = useMemo(() => {
+    const expenseCats = budgets.map(b => b.category);
+    const incomeCats = ['Gaji', 'Bonus', 'Investasi', 'Lainnya'];
+    return [...expenseCats, ...incomeCats];
+  }, [budgets]);
+
+  const handleDescriptionChange = (val: string) => {
+    setDescription(val);
+    if (val.length > 2) {
+      const suggestion = suggestCategory(val, allCategories);
+      if (suggestion) {
+        // Auto switch type if suggested category is an income category
+        const isIncomeCat = ['Gaji', 'Bonus', 'Investasi'].includes(suggestion);
+        if (isIncomeCat && type === 'expense') setType('income');
+        if (!isIncomeCat && type === 'income') setType('expense');
+        
+        setCategory(suggestion);
+      }
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -155,7 +177,7 @@ export const TransactionForm: React.FC<{ onSave: () => void }> = ({ onSave }) =>
             type="text" 
             placeholder={settings.language === 'id' ? 'Tulis keterangan singkat...' : 'Short description...'}
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            onChange={(e) => handleDescriptionChange(e.target.value)}
             style={{ 
               padding: '14px', 
               borderRadius: '16px', 
